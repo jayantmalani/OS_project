@@ -1,0 +1,28 @@
+#!/bin/bash
+
+BS=4K
+RESULTFILE="resultsRanread.csv"
+
+if [ -z $RESULTFILE ]; then
+	rm $RESULTFILE
+fi
+
+echo "[*]Turning off all but one CPU core"
+sleep 1
+for i in `seq 1 3`; do
+	echo 0|sudo tee /sys/devices/system/cpu/cpu$i/online
+done
+
+echo 3 |sudo tee /proc/sys/vm/drop_caches
+./measureRAMaccess
+echo 3 |sudo tee /proc/sys/vm/drop_caches
+./measureRAMbandwidth
+echo 3 |sudo tee /proc/sys/vm/drop_caches
+
+echo "[*] Turning CPU cores back on"
+sleep 1
+for i in `seq 1 3`; do
+		echo 1|sudo tee /sys/devices/system/cpu/cpu$i/online
+done
+
+echo "[!] Job's done! Results are in $RESULTFILE"

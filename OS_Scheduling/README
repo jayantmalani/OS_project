@@ -1,0 +1,8 @@
+Just start by running 'make' at the command line then run the measureTaskCreate.sh script to generate a csv file.
+
+$make
+  gcc -o measureThreadCreate measureThreadCreate.c -O0 -pthread
+  gcc -o measureProcCreate measureProcCreate.c -O0
+$./measureTaskCreate.sh
+
+This should spit out a bunch of numbers (1000, acutally. There's some weird, bigger numbers at the beginning but after about 10 iterations or so, the numbers level out. I just wanted to make sure these anomolies get buried in the noise) and generate a file called taskCreate.csv

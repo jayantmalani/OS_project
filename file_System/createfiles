@@ -1,0 +1,10 @@
+#!/bin/bash
+
+BS=4K
+
+for j in `seq 20 20`; do
+	FILENAME=$((1024*(2**j)))
+	echo "[+] Creating a $FILENAME byte file..."
+	dd bs=$BS count=$((2**($j-2))) if=/dev/urandom of=$FILENAME 2> /dev/null
+	echo "********************************************"
+done

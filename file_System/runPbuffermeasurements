@@ -1,0 +1,39 @@
+#!/bin/bash
+
+BS=4K
+RESULTFILE="resultsPGt.csv"
+
+if [ -z $RESULTFILE ]; then
+	rm $RESULTFILE
+fi
+
+echo "[*]Turning off all but one CPU core"
+sleep 1
+for i in `seq 1 3`; do
+	echo 0|sudo tee /sys/devices/system/cpu/cpu$i/online
+done
+
+echo "file.size,iteration,page,cycles" > $RESULTFILE
+for j in `seq 1 5`; do
+	#FILENAME=$((1024*(2**j)))
+	FILENAME=$((1024*1024*1024*j))
+    CONT=$((1024*1024*$j/4))
+	echo "[+] Creating a $FILENAME byte file... $CONT"
+	#dd bs=$BS count=$((2**($j-2))) if=/dev/urandom of=$FILENAME 2> /dev/null
+    dd bs=$BS count=$CONT if=/dev/urandom of=$FILENAME 2> /dev/null
+	echo "[+] Gathering page buffer cache data..."
+    echo 3 |sudo tee /proc/sys/vm/drop_caches
+	./measurePGtime $FILENAME
+    echo 3 |sudo tee /proc/sys/vm/drop_caches
+	echo "[+] Cleaning up..."
+	rm $FILENAME
+	echo "********************************************"
+done
+
+echo "[*] Turning CPU cores back on"
+sleep 1
+for k in `seq 1 3`; do
+		echo 1|sudo tee /sys/devices/system/cpu/cpu$k/online
+done
+
+echo "[!] Job's done! Results are in $RESULTFILE"
