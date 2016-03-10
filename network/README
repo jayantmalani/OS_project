@@ -1,0 +1,17 @@
+To run, just use the run.sh scrupt included in the directory.
+Usage:
+	./run.sh <destination IP> <destination MAC> <port> <interface>
+Example:
+	./run.sh 137.110.9.216 00:21:56:4a:38:00 80 wlan0
+
+Note that if you want to try handshaking with a server on the internet (i.e.,
+outside the local network) you'll use the destination IP address but your
+gateway's MAC address.
+	./run.sh <Internet server> <Router MAC> <port> <interface>
+
+Best used with Wireshark or TCPDump to be able to verify that the handshake
+is happening. The sequnce should be:
+<local>:  SYN
+<remote>: SYN-ACK
+<local>:  ACK
+<local>:  RST
