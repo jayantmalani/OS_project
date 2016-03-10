@@ -28,7 +28,7 @@
 
 void getOverheads(int sockfd);
 void createIpHeader(struct iphdr* iph);
-void createTcpHeader(struct tcphdr* tcph, char flags, int seq, int ack_seq);
+void createTcpHeader(struct tcphdr* tcph, int srcPort, int dstPort, char flags, int seq, int ack_seq);
 unsigned short getChecksum(unsigned short* dg, int len); 
 static __attribute__((always_inline)) unsigned long long rdtsc(void); 
 
@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
 	iph  = (struct iphdr*)(eth_frame + ETH_HDRLEN);
 	tcph = (struct tcphdr*)(eth_frame + ETH_HDRLEN + IP4_HDRLEN);
 	createIpHeader(iph);
-	createTcpHeader(tcph, 0x02, htonl(rand() ), 0);
+	createTcpHeader(tcph, srcPort, dstPort, 0x02, htonl(rand() ), 0);
 
 	int frame_length;
 	frame_length = 2*6 + 2 + IP4_HDRLEN + TCP_HDRLEN;
@@ -153,15 +153,34 @@ int main(int argc, char* argv[]) {
 
 		in_iph = (struct iphdr*)(recvBuff + ETH_HDRLEN);
 	} while(in_iph->saddr != dstIp);
-	
+
 	// Get the TCP header from the inbound packet
 	struct tcphdr *in_tcph = (struct tcphdr*)(recvBuff + ETH_HDRLEN + IP4_HDRLEN);
 		
+	if(in_iph->saddr == inet_addr("127.0.0.1") ) {
+		createTcpHeader(tcph, dstPort, srcPort, 0x12, ntohl(rand()), ntohl(in_tcph->seq)+1);
+		if((bytes = sendto(sockfd, eth_frame, frame_length, 0, (struct sockaddr*)&dev, sizeof(dev) ) ) <= 0) {
+			perror("sendto:");
+			exit(EXIT_FAILURE);
+		}
+		do {
+			if(recvfrom(sockfd, recvBuff, IP_MAXPACKET, 0, &saddr, &saddr_size ) == -1) {
+				perror("recvfrom");
+				exit(EXIT_FAILURE);
+			}
+
+			in_iph = (struct iphdr*)(recvBuff + ETH_HDRLEN);
+		} while(in_iph->saddr != dstIp);
+	}
+	
+	in_tcph = (struct tcphdr*)(recvBuff + ETH_HDRLEN + IP4_HDRLEN);
+	createTcpHeader(tcph, srcPort, dstPort, 0x10, ntohl(in_tcph->ack_seq), ntohl(in_tcph->seq)+1);
 	// Is this the SYN-ACK we're looking for?
+	printf("%x %x %x %x\r\n", in_tcph->dest, tcph->source, in_tcph->ack, in_tcph->syn);
 	if(in_tcph->dest == tcph->source && (in_tcph->ack && (in_tcph->fin || in_tcph->syn) ) ) {
 
 		// Reply to the SYN-ACK with an ACK
-		createTcpHeader(tcph, 0x10, ntohl(in_tcph->ack_seq), ntohl(in_tcph->seq)+1);
+		createTcpHeader(tcph, srcPort, dstPort, 0x10, ntohl(in_tcph->ack_seq), ntohl(in_tcph->seq)+1);
 		if((bytes = sendto(sockfd, eth_frame, frame_length, 0, (struct sockaddr*)&dev, sizeof(dev) ) ) <= 0) {
 			perror("sendto:");
 			exit(EXIT_FAILURE);
@@ -169,7 +188,7 @@ int main(int argc, char* argv[]) {
 	}
 	
 	// Reset the connection so it's not left open on the remote host (just good manners)
-	createTcpHeader(tcph, 0x04, ntohl(tcph->seq), ntohl(tcph->ack_seq));
+	createTcpHeader(tcph, srcPort, dstPort, 0x04, ntohl(tcph->seq), ntohl(tcph->ack_seq));
 	if((bytes = sendto(sockfd, eth_frame, frame_length, 0, (struct sockaddr*)&dev, sizeof(dev) ) ) <= 0) {
 		perror("sendto:");
 		exit(EXIT_FAILURE);
@@ -234,7 +253,7 @@ void createIpHeader(struct iphdr* iph) {
 	iph->check    = getChecksum((unsigned short*)eth_frame, iph->tot_len); // Compute checksum
 }
 
-void createTcpHeader(struct tcphdr* tcph, char flags, int seq, int ack_seq) {
+void createTcpHeader(struct tcphdr* tcph, int srcPort, int dstPort, char flags, int seq, int ack_seq) {
 	struct psdhdr {
 		unsigned int src_addr;
 		unsigned int dst_addr;
