@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 		i++;
 	} while(bytes >= 0);
 	t_end = rdtsc();
-	printf("%lld\r\n", t_end - t_start - t_read*(i-3) );
+	printf("%lld\r\n", t_end - t_start - t_read*i) );
 	
 	close(sockfd);
 }
